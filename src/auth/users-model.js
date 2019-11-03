@@ -30,8 +30,19 @@ users.pre('save', async function() {
     this.password = await bcrypt.hash(this.password, 10);
   }
 });
-users.statics.createFromOauth = function(email) {
 
+/**
+ *
+ * @param token
+ * @returns {Query|void}
+ */
+users.authenticateToken = function (token) {
+  let parsedToken = jwt.verify(token, process.env.SECRET);
+  return this.findOne({ _id: parsedToken.id });
+};
+
+// give back user id and password possibly needed?
+users.statics.createFromOauth = function(email) {
   if(! email) { return Promise.reject('Validation Error'); }
 
   return this.findOne( {email} )
@@ -74,21 +85,21 @@ users.methods.comparePassword = function(password) {
     .then( valid => valid ? this : null);
 };
 
-users.methods.generateToken = function(type) {
+  users.methods.generateToken = function(type) {
 
-  let token = {
-    id: this._id,
-    capabilities: capabilities[this.role],
-    type: type || 'user',
+    let token = {
+      id: this._id,
+      capabilities: capabilities[this.role],
+      type: type || 'users',
+    };
+
+    let options = {};
+    if ( type !== 'key' && !! TOKEN_EXPIRE ) {
+      options = { expiresIn: TOKEN_EXPIRE };
+    }
+
+    return jwt.sign(token, SECRET, options);
   };
-
-  let options = {};
-  if ( type !== 'key' && !! TOKEN_EXPIRE ) {
-    options = { expiresIn: TOKEN_EXPIRE };
-  }
-
-  return jwt.sign(token, SECRET, options);
-};
 
 users.methods.can = function(capability) {
   return capabilities[this.role].includes(capability);

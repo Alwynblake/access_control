@@ -1,10 +1,10 @@
 'use strict';
 
-const User = require('./users-model.js');
+const Users = require('./users-model.js');
 
-module.exports = (capability) => {
+module.exports = (capability) => ( req, res, next) => {
   
-  return (req, res, next) => {
+  // return (req, res, next) => {
 
     try {
       let [authType, authString] = req.headers.authorization.split(/\s+/);
@@ -29,32 +29,28 @@ module.exports = (capability) => {
       let [username, password] = bufferString.split(':'); // john='john'; mysecret='mysecret']
       let auth = {username, password}; // { username:'john', password:'mysecret' }
 
-      return User.authenticateBasic(auth)
-        .then(user => _authenticate(user))
+      return Users.authenticateBasic(auth)
+        .then(users => _authenticate(users))
         .catch(_authError);
     }
 
     function _authBearer(authString) {
-      return User.authenticateToken(authString)
-        .then(user => _authenticate(user))
+      return Users.authenticateToken(authString)
+        .then(users => _authenticate(users))
         .catch(_authError);
     }
 
-    function _authenticate(user) {
-      if ( user && (!capability || (user.can(capability))) ) {
-        req.user = user;
-        req.token = user.generateToken();
+    function _authenticate(users) {
+      if ( users && (!capability || (users.can(capability))) ) {
+        req.users = users;
+        req.token = users.generateToken();
         next();
-      }
-      else {
+      } else {
         _authError();
       }
     }
 
     function _authError() {
-      next('Invalid User ID/Password');
+      next('Invalid User ID/Password')
     }
-
   };
-  
-};
